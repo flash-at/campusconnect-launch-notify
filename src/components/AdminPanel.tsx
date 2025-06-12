@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,14 +8,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationService, NotificationData } from './NotificationService';
-import { Send, Users, Bell, Rocket } from "lucide-react";
+import { Send, Users, Bell, Rocket, BarChart3 } from "lucide-react";
 
 const AdminPanel = () => {
   const [updateTitle, setUpdateTitle] = useState("");
   const [updateContent, setUpdateContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [subscribers, setSubscribers] = useState<NotificationData[]>([]);
+  const [stats, setStats] = useState({ totalSubscribers: 0, totalNotifications: 0 });
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [subscribersData, statsData] = await Promise.all([
+        NotificationService.getSubscribers(),
+        NotificationService.getStats()
+      ]);
+      setSubscribers(subscribersData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
 
   const handleSendUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +65,9 @@ const AdminPanel = () => {
 
       setUpdateTitle("");
       setUpdateContent("");
+      
+      // Reload stats
+      await loadData();
     } catch (error) {
       toast({
         title: "Error",
@@ -68,6 +89,9 @@ const AdminPanel = () => {
         title: "Launch Notification Sent! 🚀",
         description: "All subscribers have been notified about the CampusConnect launch!",
       });
+      
+      // Reload stats
+      await loadData();
     } catch (error) {
       toast({
         title: "Error",
@@ -79,25 +103,39 @@ const AdminPanel = () => {
     }
   };
 
-  const loadSubscribers = async () => {
-    try {
-      const subs = await NotificationService.getSubscribers();
-      setSubscribers(subs);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load subscribers.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-4">CampusConnect Admin Panel</h1>
           <p className="text-gray-300">Manage notifications and updates for your subscribers</p>
+          
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <Card className="bg-white/10 border-white/20">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-8 w-8 text-emerald-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-white">{stats.totalSubscribers}</p>
+                    <p className="text-sm text-gray-300">Active Subscribers</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white/10 border-white/20">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="h-8 w-8 text-emerald-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-white">{stats.totalNotifications}</p>
+                    <p className="text-sm text-gray-300">Notifications Sent</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Tabs defaultValue="send-update" className="space-y-6">
@@ -124,7 +162,7 @@ const AdminPanel = () => {
                   Send Update to Subscribers
                 </CardTitle>
                 <CardDescription className="text-gray-300">
-                  Send a custom update notification to all active subscribers
+                  Send a custom update notification to all {stats.totalSubscribers} active subscribers
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -158,11 +196,11 @@ const AdminPanel = () => {
 
                   <Button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || stats.totalSubscribers === 0}
                     className="w-full bg-emerald-500 hover:bg-emerald-600"
                   >
                     <Send className="h-4 w-4 mr-2" />
-                    {isLoading ? "Sending..." : "Send Update"}
+                    {isLoading ? "Sending..." : `Send Update to ${stats.totalSubscribers} Subscribers`}
                   </Button>
                 </form>
               </CardContent>
@@ -177,7 +215,7 @@ const AdminPanel = () => {
                   Launch Notification
                 </CardTitle>
                 <CardDescription className="text-gray-300">
-                  Send the official launch notification to all subscribers
+                  Send the official launch notification to all {stats.totalSubscribers} subscribers
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -189,11 +227,11 @@ const AdminPanel = () => {
                   
                   <Button
                     onClick={handleSendLaunchNotification}
-                    disabled={isLoading}
+                    disabled={isLoading || stats.totalSubscribers === 0}
                     className="w-full bg-emerald-500 hover:bg-emerald-600"
                   >
                     <Rocket className="h-4 w-4 mr-2" />
-                    {isLoading ? "Sending..." : "Send Launch Notification"}
+                    {isLoading ? "Sending..." : `Send Launch Notification to ${stats.totalSubscribers} Subscribers`}
                   </Button>
                 </div>
               </CardContent>
@@ -208,17 +246,17 @@ const AdminPanel = () => {
                   Subscriber Management
                 </CardTitle>
                 <CardDescription className="text-gray-300">
-                  View and manage your notification subscribers
+                  View and manage your {stats.totalSubscribers} notification subscribers
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Button onClick={loadSubscribers} className="bg-emerald-500 hover:bg-emerald-600">
+                  <Button onClick={loadData} className="bg-emerald-500 hover:bg-emerald-600">
                     <Users className="h-4 w-4 mr-2" />
-                    Load Subscribers
+                    Refresh Subscribers
                   </Button>
 
-                  {subscribers.length > 0 && (
+                  {subscribers.length > 0 ? (
                     <div className="space-y-2">
                       <h3 className="text-white font-semibold">
                         Active Subscribers ({subscribers.length})
@@ -237,6 +275,12 @@ const AdminPanel = () => {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-300">No subscribers yet</p>
+                      <p className="text-gray-400 text-sm">Subscribers will appear here when they sign up</p>
                     </div>
                   )}
                 </div>

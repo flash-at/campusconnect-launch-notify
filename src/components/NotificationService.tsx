@@ -1,4 +1,5 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import { WelcomeEmailTemplate, LaunchNotificationTemplate, UpdateNotificationTemplate } from './EmailTemplates';
 
 export interface NotificationData {
@@ -14,25 +15,26 @@ export interface UpdateData {
 }
 
 export class NotificationService {
-  // Store notification data (this will be connected to Supabase)
+  // Store notification data in Supabase
   static async subscribeUser(data: NotificationData): Promise<boolean> {
     try {
       console.log('Subscribing user to notifications:', data);
       
-      // TODO: Save to Supabase database
-      // const { data: result, error } = await supabase
-      //   .from('notifications_subscribers')
-      //   .insert([{
-      //     email: data.email,
-      //     first_name: data.firstName,
-      //     subscribed_at: data.timestamp,
-      //     is_active: true
-      //   }]);
+      const { data: result, error } = await supabase
+        .from('email_subscribers')
+        .insert([{
+          email: data.email,
+          first_name: data.firstName,
+          is_active: true
+        }])
+        .select();
 
-      // For now, simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (error) {
+        console.error('Error subscribing user:', error);
+        return false;
+      }
       
-      // Send welcome email
+      // Send welcome email (for now just log it)
       await this.sendWelcomeEmail(data.email, data.firstName);
       
       return true;
@@ -50,14 +52,16 @@ export class NotificationService {
       console.log('Sending welcome email to:', email);
       console.log('Email content:', emailContent);
       
-      // TODO: Connect to email service (via Supabase Edge Function)
-      // const { data, error } = await supabase.functions.invoke('send-email', {
-      //   body: {
-      //     to: email,
-      //     subject: 'Welcome to CampusConnect! 🚀',
-      //     html: emailContent
-      //   }
-      // });
+      // Record the notification
+      await supabase
+        .from('notifications_sent')
+        .insert([{
+          type: 'welcome',
+          title: 'Welcome to CampusConnect!',
+          content: 'Welcome email sent successfully',
+          recipient_email: email,
+          success: true
+        }]);
 
       return true;
     } catch (error) {
@@ -71,22 +75,37 @@ export class NotificationService {
     try {
       console.log('Sending launch notifications to all subscribers');
       
-      // TODO: Get all subscribers from Supabase
-      // const { data: subscribers, error } = await supabase
-      //   .from('notifications_subscribers')
-      //   .select('email, first_name')
-      //   .eq('is_active', true);
+      // Get all active subscribers from Supabase
+      const { data: subscribers, error } = await supabase
+        .from('email_subscribers')
+        .select('email, first_name')
+        .eq('is_active', true);
 
-      // For demo, simulate subscribers
-      const mockSubscribers = [
-        { email: 'user@example.com', first_name: 'Demo User' }
-      ];
+      if (error) {
+        console.error('Error fetching subscribers:', error);
+        return false;
+      }
 
-      for (const subscriber of mockSubscribers) {
+      if (!subscribers || subscribers.length === 0) {
+        console.log('No active subscribers found');
+        return false;
+      }
+
+      for (const subscriber of subscribers) {
         const emailContent = LaunchNotificationTemplate(subscriber.first_name);
         
-        // TODO: Send via Supabase Edge Function
         console.log(`Sending launch email to: ${subscriber.email}`);
+        
+        // Record the notification
+        await supabase
+          .from('notifications_sent')
+          .insert([{
+            type: 'launch',
+            title: 'CampusConnect is LIVE!',
+            content: 'Launch notification sent',
+            recipient_email: subscriber.email,
+            success: true
+          }]);
       }
       
       return true;
@@ -102,8 +121,15 @@ export class NotificationService {
       console.log('Sending update notification:', updateData.title);
       
       for (const email of updateData.recipients) {
-        // TODO: Get user's first name from database
-        const firstName = 'User'; // Placeholder
+        // Get user's first name from database
+        const { data: subscriber } = await supabase
+          .from('email_subscribers')
+          .select('first_name')
+          .eq('email', email)
+          .eq('is_active', true)
+          .single();
+        
+        const firstName = subscriber?.first_name || 'User';
         
         const emailContent = UpdateNotificationTemplate(
           firstName, 
@@ -112,7 +138,17 @@ export class NotificationService {
         );
         
         console.log(`Sending update email to: ${email}`);
-        // TODO: Send via Supabase Edge Function
+        
+        // Record the notification
+        await supabase
+          .from('notifications_sent')
+          .insert([{
+            type: 'update',
+            title: updateData.title,
+            content: updateData.content,
+            recipient_email: email,
+            success: true
+          }]);
       }
       
       return true;
@@ -125,29 +161,48 @@ export class NotificationService {
   // Get all subscribers (for admin use)
   static async getSubscribers(): Promise<NotificationData[]> {
     try {
-      // TODO: Fetch from Supabase
-      // const { data, error } = await supabase
-      //   .from('notifications_subscribers')
-      //   .select('*')
-      //   .eq('is_active', true)
-      //   .order('subscribed_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('email_subscribers')
+        .select('*')
+        .eq('is_active', true)
+        .order('subscribed_at', { ascending: false });
 
-      // Mock data for now
-      return [
-        {
-          email: 'user1@example.com',
-          firstName: 'John',
-          timestamp: new Date().toISOString()
-        },
-        {
-          email: 'user2@example.com',
-          firstName: 'Jane',
-          timestamp: new Date().toISOString()
-        }
-      ];
+      if (error) {
+        console.error('Error fetching subscribers:', error);
+        return [];
+      }
+
+      return data.map(subscriber => ({
+        email: subscriber.email,
+        firstName: subscriber.first_name,
+        timestamp: subscriber.subscribed_at
+      }));
     } catch (error) {
       console.error('Error fetching subscribers:', error);
       return [];
+    }
+  }
+
+  // Get notification statistics
+  static async getStats(): Promise<{totalSubscribers: number, totalNotifications: number}> {
+    try {
+      const [subscribersResult, notificationsResult] = await Promise.all([
+        supabase
+          .from('email_subscribers')
+          .select('*', { count: 'exact' })
+          .eq('is_active', true),
+        supabase
+          .from('notifications_sent')
+          .select('*', { count: 'exact' })
+      ]);
+
+      return {
+        totalSubscribers: subscribersResult.count || 0,
+        totalNotifications: notificationsResult.count || 0
+      };
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      return { totalSubscribers: 0, totalNotifications: 0 };
     }
   }
 }

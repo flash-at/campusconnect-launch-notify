@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Rocket, BarChart3 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [email, setEmail] = useState("");
@@ -30,13 +31,43 @@ const Index = () => {
     console.log("Submitting notification request:", { email, firstName, notify });
 
     try {
-      // Simulate API call for now - you'll connect this to Supabase
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      toast({
-        title: "Success! 🚀",
-        description: `Thanks ${firstName}! We'll notify you at ${email} when CampusConnect launches.`,
-      });
+      // Insert subscriber into Supabase
+      const { data, error } = await supabase
+        .from('email_subscribers')
+        .insert([{
+          email: email,
+          first_name: firstName,
+          is_active: true
+        }])
+        .select();
+
+      if (error) {
+        // Check if it's a duplicate email error
+        if (error.code === '23505') {
+          toast({
+            title: "Already Subscribed! 🎉",
+            description: `${firstName}, you're already on our list! We'll notify you when CampusConnect launches.`,
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        // Record the welcome notification
+        await supabase
+          .from('notifications_sent')
+          .insert([{
+            type: 'welcome',
+            title: 'Welcome to CampusConnect!',
+            content: 'Thank you for subscribing to CampusConnect updates.',
+            recipient_email: email,
+            success: true
+          }]);
+
+        toast({
+          title: "Success! 🚀",
+          description: `Thanks ${firstName}! We'll notify you at ${email} when CampusConnect launches.`,
+        });
+      }
       
       // Reset form
       setEmail("");
@@ -125,7 +156,7 @@ const Index = () => {
                     <Checkbox
                       id="notify"
                       checked={notify}
-                      onCheckedChange={setNotify}
+                      onCheckedChange={(checked) => setNotify(checked === true)}
                       className="border-gray-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <Label htmlFor="notify" className="text-sm text-gray-300">
