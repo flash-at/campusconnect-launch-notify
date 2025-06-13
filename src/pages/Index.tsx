@@ -56,24 +56,37 @@ const Index = () => {
             title: "Already Subscribed! 🎉",
             description: `${firstName}, you're already on our list! We'll notify you when CampusConnect launches.`,
           });
+          // Reset form even for duplicates
+          setEmail("");
+          setFirstName("");
+          setNotify(false);
+          return;
         } else {
           throw error;
         }
-      } else {
-        // Record the welcome notification
-        await supabase
-          .from('notifications_sent')
-          .insert([{
-            type: 'welcome',
-            title: 'Welcome to CampusConnect!',
-            content: 'Thank you for subscribing to CampusConnect updates.',
-            recipient_email: email,
-            success: true
-          }]);
+      }
 
+      // Send welcome email via edge function
+      console.log("Calling send-welcome-email function...");
+      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+        body: {
+          email: email,
+          firstName: firstName
+        }
+      });
+
+      if (emailError) {
+        console.error("Error sending welcome email:", emailError);
+        // Still show success message even if email fails
+        toast({
+          title: "Subscribed Successfully! 📧",
+          description: `Thanks ${firstName}! You're now on our waitlist. We'll notify you when CampusConnect launches.`,
+        });
+      } else {
+        console.log("Welcome email sent successfully:", emailData);
         toast({
           title: "Success! 🚀",
-          description: `Thanks ${firstName}! We'll notify you at ${email} when CampusConnect launches.`,
+          description: `Thanks ${firstName}! Check your email at ${email} for a welcome message. We'll keep you updated on CampusConnect's launch!`,
         });
       }
       
@@ -81,6 +94,7 @@ const Index = () => {
       setEmail("");
       setFirstName("");
       setNotify(false);
+      
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -99,7 +113,7 @@ const Index = () => {
       <header className="py-8 md:py-10 border-b border-white/5">
         <div className="container mx-auto flex justify-between items-center px-6">
           <div className="flex items-center space-x-4">
-            <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
+            <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 rounded-xl backdrop-blur-sm border border-emerald-500/20 shadow-lg shadow-emerald-500/10">
               <CustomLogo />
             </div>
             <div>
@@ -197,7 +211,7 @@ const Index = () => {
                     disabled={isLoading}
                     className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-8 py-3 h-12 rounded-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/25 w-full sm:w-auto"
                   >
-                    {isLoading ? "Submitting..." : "Notify Me"}
+                    {isLoading ? "Sending..." : "Notify Me"}
                   </Button>
                 </div>
               </form>
