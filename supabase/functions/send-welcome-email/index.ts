@@ -220,22 +220,30 @@ const handler = async (req: Request): Promise<Response> => {
       `
     };
 
-    console.log("Sending email via Brevo...");
+    console.log("Sending email via Brevo with API key:", brevoApiKey ? `${brevoApiKey.substring(0, 8)}...` : 'missing');
 
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
+        "accept": "application/json",
         "api-key": brevoApiKey,
-        "Content-Type": "application/json",
+        "content-type": "application/json",
       },
       body: JSON.stringify(emailData),
     });
 
     console.log("Brevo response status:", response.status);
+    
+    let responseText = '';
+    try {
+      responseText = await response.text();
+      console.log("Brevo response body:", responseText);
+    } catch (err) {
+      console.error("Error reading response text:", err);
+    }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Brevo API error:", errorText);
+      console.error("Brevo API error - Status:", response.status, "Body:", responseText);
       
       // Initialize Supabase client for logging
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -247,14 +255,18 @@ const handler = async (req: Request): Promise<Response> => {
         .insert([{
           type: 'welcome',
           title: 'Welcome to CampusConnect!',
-          content: `Email sending failed: ${errorText}`,
+          content: `Email sending failed: Status ${response.status} - ${responseText}`,
           recipient_email: email,
           success: false
         }]);
 
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Failed to send email: ${response.status} - ${errorText}`,
+        error: `Failed to send email: ${response.status} - ${responseText}`,
+        debug: {
+          hasApiKey: !!brevoApiKey,
+          apiKeyPrefix: brevoApiKey ? brevoApiKey.substring(0, 8) : 'none'
+        }
       }), {
         status: 500,
         headers: {
