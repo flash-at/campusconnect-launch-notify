@@ -110,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailData = {
       to: [{ email: email, name: firstName }],
-      sender: { email: "noreply@lovableai.com", name: "CampusConnect Team" },
+      sender: { email: "noreply@campusconnect.com", name: "CampusConnect Team" },
       subject: "🚀 Welcome to CampusConnect - You're In!",
       htmlContent: `
         <!DOCTYPE html>
@@ -220,30 +220,40 @@ const handler = async (req: Request): Promise<Response> => {
       `
     };
 
-    console.log("Sending email via Brevo with API key:", brevoApiKey ? `${brevoApiKey.substring(0, 8)}...` : 'missing');
+    console.log("Making request to Brevo API...");
 
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        "accept": "application/json",
+        "Accept": "application/json",
         "api-key": brevoApiKey,
-        "content-type": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(emailData),
     });
 
-    console.log("Brevo response status:", response.status);
+    console.log("Brevo API response status:", response.status);
     
+    let responseData = null;
     let responseText = '';
+    
     try {
       responseText = await response.text();
-      console.log("Brevo response body:", responseText);
+      console.log("Brevo API response text:", responseText);
+      
+      if (responseText) {
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (e) {
+          console.log("Response is not JSON:", responseText);
+        }
+      }
     } catch (err) {
-      console.error("Error reading response text:", err);
+      console.error("Error reading response:", err);
     }
 
     if (!response.ok) {
-      console.error("Brevo API error - Status:", response.status, "Body:", responseText);
+      console.error("Brevo API error - Status:", response.status, "Response:", responseText);
       
       // Initialize Supabase client for logging
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -265,7 +275,8 @@ const handler = async (req: Request): Promise<Response> => {
         error: `Failed to send email: ${response.status} - ${responseText}`,
         debug: {
           hasApiKey: !!brevoApiKey,
-          apiKeyPrefix: brevoApiKey ? brevoApiKey.substring(0, 8) : 'none'
+          apiKeyLength: brevoApiKey ? brevoApiKey.length : 0,
+          statusCode: response.status
         }
       }), {
         status: 500,
@@ -276,7 +287,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log("Email sent successfully via Brevo");
+    console.log("Email sent successfully via Brevo API");
 
     // Initialize Supabase client for logging
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
