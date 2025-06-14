@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Rocket } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Rocket, AlertCircle } from "lucide-react";
+import { NotificationService } from "@/components/NotificationService";
 
 const CustomLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,62 +39,29 @@ const Index = () => {
     console.log("Submitting notification request:", { email, firstName, notify });
 
     try {
-      // Insert subscriber into Supabase
-      const { data, error } = await supabase
-        .from('email_subscribers')
-        .insert([{
-          email: email,
-          first_name: firstName,
-          is_active: true
-        }])
-        .select();
-
-      if (error) {
-        // Check if it's a duplicate email error
-        if (error.code === '23505') {
-          toast({
-            title: "Already Subscribed! 🎉",
-            description: `${firstName}, you're already on our list! We'll notify you when CampusConnect launches.`,
-          });
-          // Reset form even for duplicates
-          setEmail("");
-          setFirstName("");
-          setNotify(false);
-          return;
-        } else {
-          throw error;
-        }
-      }
-
-      // Send welcome email via edge function
-      console.log("Calling send-welcome-email function...");
-      const { data: emailData, error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-        body: {
-          email: email,
-          firstName: firstName
-        }
+      const result = await NotificationService.subscribeUser({
+        email,
+        firstName,
+        timestamp: new Date().toISOString()
       });
 
-      if (emailError) {
-        console.error("Error sending welcome email:", emailError);
-        // Still show success message even if email fails
+      if (result.success) {
         toast({
-          title: "Subscribed Successfully! 📧",
-          description: `Thanks ${firstName}! You're now on our waitlist. We'll notify you when CampusConnect launches.`,
+          title: result.emailSent ? "Success! 🚀" : "Subscribed! 📧",
+          description: result.message,
         });
+        
+        // Reset form
+        setEmail("");
+        setFirstName("");
+        setNotify(false);
       } else {
-        console.log("Welcome email sent successfully:", emailData);
         toast({
-          title: "Success! 🚀",
-          description: `Thanks ${firstName}! Check your email at ${email} for a welcome message. We'll keep you updated on CampusConnect's launch!`,
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
         });
       }
-      
-      // Reset form
-      setEmail("");
-      setFirstName("");
-      setNotify(false);
-      
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
@@ -133,6 +100,18 @@ const Index = () => {
           </nav>
         </div>
       </header>
+
+      {/* Email Service Notice */}
+      <div className="bg-amber-500/10 border-l-4 border-amber-500 p-4 mx-6 mt-4 rounded-r-lg">
+        <div className="flex items-center">
+          <AlertCircle className="h-5 w-5 text-amber-400 mr-3" />
+          <div>
+            <p className="text-sm text-amber-200">
+              <strong>Note:</strong> Email notifications are currently being set up. You'll still be added to our waitlist!
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="flex-grow flex items-center py-16 md:py-24">

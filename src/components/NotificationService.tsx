@@ -15,7 +15,7 @@ export interface UpdateData {
 
 export class NotificationService {
   // Store notification data in Supabase
-  static async subscribeUser(data: NotificationData): Promise<boolean> {
+  static async subscribeUser(data: NotificationData): Promise<{ success: boolean; message: string; emailSent: boolean }> {
     try {
       console.log('Subscribing user to notifications:', data);
       
@@ -30,21 +30,42 @@ export class NotificationService {
 
       if (error) {
         console.error('Error subscribing user:', error);
-        return false;
+        if (error.code === '23505') {
+          return {
+            success: true,
+            message: `${data.firstName}, you're already on our waitlist! We'll notify you when CampusConnect launches.`,
+            emailSent: false
+          };
+        }
+        return {
+          success: false,
+          message: 'Failed to subscribe. Please try again.',
+          emailSent: false
+        };
       }
       
-      // Send welcome email using the edge function
-      await this.sendWelcomeEmail(data.email, data.firstName);
+      // Try to send welcome email
+      const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
       
-      return true;
+      return {
+        success: true,
+        message: emailResult.success 
+          ? `Thanks ${data.firstName}! Check your email for a welcome message.`
+          : `Thanks ${data.firstName}! You're subscribed, but we couldn't send the welcome email right now.`,
+        emailSent: emailResult.success
+      };
     } catch (error) {
       console.error('Error subscribing user:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Something went wrong. Please try again.',
+        emailSent: false
+      };
     }
   }
 
   // Send welcome email when user subscribes
-  static async sendWelcomeEmail(email: string, firstName: string): Promise<boolean> {
+  static async sendWelcomeEmail(email: string, firstName: string): Promise<{ success: boolean; message: string }> {
     try {
       console.log('Calling send-welcome-email function...');
       
@@ -54,19 +75,36 @@ export class NotificationService {
 
       if (error) {
         console.error('Error calling welcome email function:', error);
-        return false;
+        return {
+          success: false,
+          message: 'Email service unavailable'
+        };
+      }
+
+      if (data && !data.success) {
+        console.error('Welcome email function returned error:', data.error);
+        return {
+          success: false,
+          message: data.error || 'Failed to send email'
+        };
       }
 
       console.log('Welcome email sent successfully:', data);
-      return true;
+      return {
+        success: true,
+        message: 'Welcome email sent successfully'
+      };
     } catch (error) {
       console.error('Error sending welcome email:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Email service error'
+      };
     }
   }
 
   // Send launch notification to all subscribers
-  static async sendLaunchNotification(): Promise<boolean> {
+  static async sendLaunchNotification(): Promise<{ success: boolean; message: string; count?: number }> {
     try {
       console.log('Sending launch notifications to all subscribers');
       
@@ -76,19 +114,36 @@ export class NotificationService {
 
       if (error) {
         console.error('Error calling launch email function:', error);
-        return false;
+        return {
+          success: false,
+          message: 'Failed to send launch notifications'
+        };
+      }
+
+      if (data && !data.success) {
+        return {
+          success: false,
+          message: data.error || 'Failed to send launch notifications'
+        };
       }
 
       console.log('Launch notifications sent successfully:', data);
-      return true;
+      return {
+        success: true,
+        message: data.message || 'Launch notifications sent successfully',
+        count: data.count
+      };
     } catch (error) {
       console.error('Error sending launch notifications:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Service error occurred'
+      };
     }
   }
 
   // Send custom update to subscribers
-  static async sendUpdate(updateData: UpdateData): Promise<boolean> {
+  static async sendUpdate(updateData: UpdateData): Promise<{ success: boolean; message: string; count?: number }> {
     try {
       console.log('Sending update notification:', updateData.title);
       
@@ -102,14 +157,31 @@ export class NotificationService {
 
       if (error) {
         console.error('Error calling update email function:', error);
-        return false;
+        return {
+          success: false,
+          message: 'Failed to send update notifications'
+        };
+      }
+
+      if (data && !data.success) {
+        return {
+          success: false,
+          message: data.error || 'Failed to send update notifications'
+        };
       }
 
       console.log('Update notifications sent successfully:', data);
-      return true;
+      return {
+        success: true,
+        message: data.message || 'Update notifications sent successfully',
+        count: updateData.recipients.length
+      };
     } catch (error) {
       console.error('Error sending update notifications:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Service error occurred'
+      };
     }
   }
 
