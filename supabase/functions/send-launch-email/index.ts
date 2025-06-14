@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
-import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,9 +21,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY environment variable is not set");
+    const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
+    if (!sendgridApiKey) {
+      console.error("SENDGRID_API_KEY environment variable is not set");
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -40,8 +39,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const resend = new Resend(resendApiKey);
-    
     console.log("Sending launch notifications to all subscribers");
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -89,133 +86,152 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     for (const subscriber of subscribers) {
-      const emailResponse = await resend.emails.send({
-        from: "CampusConnect <onboarding@resend.dev>",
-        to: [subscriber.email],
-        subject: "🎉 CampusConnect is NOW LIVE!",
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>CampusConnect is LIVE!</title>
-              <style>
-                  body { 
-                      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                      line-height: 1.6; 
-                      color: #333; 
-                      max-width: 600px; 
-                      margin: 0 auto; 
-                      padding: 20px; 
-                      background-color: #f8f9fa;
-                  }
-                  .header { 
-                      background: linear-gradient(135deg, #0F172A 0%, #10B981 100%); 
-                      color: white; 
-                      padding: 40px; 
-                      border-radius: 12px 12px 0 0; 
-                      text-align: center; 
-                  }
-                  .content { 
-                      background: white; 
-                      padding: 30px; 
-                      border-radius: 0 0 12px 12px; 
-                      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                  }
-                  .cta-button { 
-                      background: #10B981; 
-                      color: white; 
-                      padding: 15px 30px; 
-                      text-decoration: none; 
-                      border-radius: 8px; 
-                      display: inline-block; 
-                      margin: 20px 0; 
-                      font-weight: bold; 
-                      text-align: center;
-                  }
-                  .feature-box { 
-                      background: #f0fdf4; 
-                      padding: 20px; 
-                      margin: 15px 0; 
-                      border-radius: 8px; 
-                      border-left: 4px solid #10B981; 
-                  }
-                  .footer { 
-                      text-align: center; 
-                      margin-top: 30px; 
-                      padding: 20px; 
-                      color: #666; 
-                      font-size: 14px; 
-                  }
-                  h1 { margin: 0; font-size: 28px; font-weight: bold; }
-                  h2 { color: #10B981; margin-top: 0; }
-                  h3 { color: #333; margin-bottom: 10px; }
-                  h4 { color: #333; margin-bottom: 8px; }
-              </style>
-          </head>
-          <body>
-              <div class="header">
-                  <h1>🎉 CampusConnect is NOW LIVE!</h1>
-                  <p>The wait is over - dive into the future of campus life!</p>
-              </div>
-              
-              <div class="content">
-                  <h2>Hi ${subscriber.first_name}! 🚀</h2>
-                  
-                  <p>The moment you've been waiting for is here! CampusConnect is officially live and ready to transform your campus experience.</p>
-                  
-                  <div style="text-align: center;">
-                      <a href="#" class="cta-button">🚀 Launch CampusConnect Now</a>
+      const emailData = {
+        personalizations: [
+          {
+            to: [{ email: subscriber.email }],
+            subject: "🎉 CampusConnect is NOW LIVE!"
+          }
+        ],
+        from: { email: "noreply@campusconnect.com", name: "CampusConnect" },
+        content: [
+          {
+            type: "text/html",
+            value: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>CampusConnect is LIVE!</title>
+                  <style>
+                      body { 
+                          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                          line-height: 1.6; 
+                          color: #333; 
+                          max-width: 600px; 
+                          margin: 0 auto; 
+                          padding: 20px; 
+                          background-color: #f8f9fa;
+                      }
+                      .header { 
+                          background: linear-gradient(135deg, #0F172A 0%, #10B981 100%); 
+                          color: white; 
+                          padding: 40px; 
+                          border-radius: 12px 12px 0 0; 
+                          text-align: center; 
+                      }
+                      .content { 
+                          background: white; 
+                          padding: 30px; 
+                          border-radius: 0 0 12px 12px; 
+                          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                      }
+                      .cta-button { 
+                          background: #10B981; 
+                          color: white; 
+                          padding: 15px 30px; 
+                          text-decoration: none; 
+                          border-radius: 8px; 
+                          display: inline-block; 
+                          margin: 20px 0; 
+                          font-weight: bold; 
+                          text-align: center;
+                      }
+                      .feature-box { 
+                          background: #f0fdf4; 
+                          padding: 20px; 
+                          margin: 15px 0; 
+                          border-radius: 8px; 
+                          border-left: 4px solid #10B981; 
+                      }
+                      .footer { 
+                          text-align: center; 
+                          margin-top: 30px; 
+                          padding: 20px; 
+                          color: #666; 
+                          font-size: 14px; 
+                      }
+                      h1 { margin: 0; font-size: 28px; font-weight: bold; }
+                      h2 { color: #10B981; margin-top: 0; }
+                      h3 { color: #333; margin-bottom: 10px; }
+                      h4 { color: #333; margin-bottom: 8px; }
+                  </style>
+              </head>
+              <body>
+                  <div class="header">
+                      <h1>🎉 CampusConnect is NOW LIVE!</h1>
+                      <p>The wait is over - dive into the future of campus life!</p>
                   </div>
                   
-                  <h3>🌟 What's Available Right Now:</h3>
-                  
-                  <div class="feature-box">
-                      <h4>📅 Campus Events Hub</h4>
-                      <p>Discover upcoming events, workshops, and activities happening on campus.</p>
+                  <div class="content">
+                      <h2>Hi ${subscriber.first_name}! 🚀</h2>
+                      
+                      <p>The moment you've been waiting for is here! CampusConnect is officially live and ready to transform your campus experience.</p>
+                      
+                      <div style="text-align: center;">
+                          <a href="#" class="cta-button">🚀 Launch CampusConnect Now</a>
+                      </div>
+                      
+                      <h3>🌟 What's Available Right Now:</h3>
+                      
+                      <div class="feature-box">
+                          <h4>📅 Campus Events Hub</h4>
+                          <p>Discover upcoming events, workshops, and activities happening on campus.</p>
+                      </div>
+                      
+                      <div class="feature-box">
+                          <h4>🎭 Club Directory</h4>
+                          <p>Find and join clubs that match your interests and passions.</p>
+                      </div>
+                      
+                      <div class="feature-box">
+                          <h4>🛠️ Service Requests</h4>
+                          <p>Submit maintenance requests, tech support, and other campus services.</p>
+                      </div>
+                      
+                      <div class="feature-box">
+                          <h4>📚 Student Tools</h4>
+                          <p>Access essential tools and resources for academic success.</p>
+                      </div>
+                      
+                      <p><strong>Ready to get started?</strong> Click the button above and explore everything CampusConnect has to offer!</p>
+                      
+                      <p>Thank you for being an early supporter. We can't wait to see how CampusConnect enhances your campus life!</p>
+                      
+                      <p>Welcome aboard,<br>The CampusConnect Team 🎓</p>
                   </div>
                   
-                  <div class="feature-box">
-                      <h4>🎭 Club Directory</h4>
-                      <p>Find and join clubs that match your interests and passions.</p>
+                  <div class="footer">
+                      <p>© 2025 CampusConnect by Mahesh</p>
+                      <p>Need help? Reply to this email or visit our support center.</p>
                   </div>
-                  
-                  <div class="feature-box">
-                      <h4>🛠️ Service Requests</h4>
-                      <p>Submit maintenance requests, tech support, and other campus services.</p>
-                  </div>
-                  
-                  <div class="feature-box">
-                      <h4>📚 Student Tools</h4>
-                      <p>Access essential tools and resources for academic success.</p>
-                  </div>
-                  
-                  <p><strong>Ready to get started?</strong> Click the button above and explore everything CampusConnect has to offer!</p>
-                  
-                  <p>Thank you for being an early supporter. We can't wait to see how CampusConnect enhances your campus life!</p>
-                  
-                  <p>Welcome aboard,<br>The CampusConnect Team 🎓</p>
-              </div>
-              
-              <div class="footer">
-                  <p>© 2025 CampusConnect by Mahesh</p>
-                  <p>Need help? Reply to this email or visit our support center.</p>
-              </div>
-          </body>
-          </html>
-        `,
+              </body>
+              </html>
+            `
+          }
+        ]
+      };
+
+      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${sendgridApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(emailData),
       });
 
-      if (emailResponse.error) {
-        console.error("Launch email sending failed for", subscriber.email, ":", emailResponse.error);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Launch email sending failed for", subscriber.email, ":", errorText);
         
         await supabase
           .from('notifications_sent')
           .insert([{
             type: 'launch',
             title: 'CampusConnect is LIVE!',
-            content: `Email sending failed: ${emailResponse.error.message}`,
+            content: `Email sending failed: ${errorText}`,
             recipient_email: subscriber.email,
             success: false
           }]);
