@@ -1,18 +1,18 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  base: '/campusconnect-launch-notify/', // <-- Add this line (use your repo name)
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/campusconnect-launch-notify/' : '/',
   server: {
     host: "::",
     port: 8080,
   },
   plugins: [
     react(),
-    // mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
   resolve: {
@@ -20,4 +20,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
+}));
