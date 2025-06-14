@@ -116,7 +116,7 @@ const Index = () => {
                 Admin
               </a>
             </div>
-          </div>
+          </nav>
         </div>
       </header>
 
