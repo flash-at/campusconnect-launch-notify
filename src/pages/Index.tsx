@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Rocket, AlertCircle } from "lucide-react";
+import { Rocket, AlertCircle, Mail } from "lucide-react";
 import { NotificationService } from "@/components/NotificationService";
 
 const CustomLogo = () => (
@@ -25,6 +26,8 @@ const Index = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("Form submitted with:", { email, firstName, notify });
+    
     if (!email || !firstName || !notify) {
       toast({
         title: "Missing Information",
@@ -34,15 +37,28 @@ const Index = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-    console.log("Submitting notification request:", { email, firstName, notify });
+    console.log("Starting subscription process for:", { email, firstName });
 
     try {
       const result = await NotificationService.subscribeUser({
-        email,
-        firstName,
+        email: email.trim(),
+        firstName: firstName.trim(),
         timestamp: new Date().toISOString()
       });
+
+      console.log("Subscription result:", result);
 
       if (result.success) {
         toast({
@@ -50,7 +66,7 @@ const Index = () => {
           description: result.message,
         });
         
-        // Reset form
+        // Reset form on success
         setEmail("");
         setFirstName("");
         setNotify(false);
@@ -101,12 +117,12 @@ const Index = () => {
       </header>
 
       {/* Email Service Notice */}
-      <div className="bg-blue-500/10 border-l-4 border-blue-500 p-4 mx-6 mt-4 rounded-r-lg">
+      <div className="bg-emerald-500/10 border-l-4 border-emerald-500 p-4 mx-6 mt-4 rounded-r-lg">
         <div className="flex items-center">
-          <AlertCircle className="h-5 w-5 text-blue-400 mr-3" />
+          <Mail className="h-5 w-5 text-emerald-400 mr-3" />
           <div>
-            <p className="text-sm text-blue-200">
-              <strong>Email Status:</strong> You'll be added to our waitlist! Email notifications are being configured.
+            <p className="text-sm text-emerald-200">
+              <strong>Email Status:</strong> ✅ Welcome emails are now active! You'll receive a confirmation email after subscribing.
             </p>
           </div>
         </div>
@@ -150,7 +166,8 @@ const Index = () => {
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       required
-                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500 focus:ring-emerald-500/30 rounded-lg"
+                      disabled={isLoading}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500 focus:ring-emerald-500/30 rounded-lg disabled:opacity-50"
                     />
                   </div>
 
@@ -166,7 +183,8 @@ const Index = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500 focus:ring-emerald-500/30 rounded-lg"
+                      disabled={isLoading}
+                      className="h-12 bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500 focus:ring-emerald-500/30 rounded-lg disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -177,7 +195,8 @@ const Index = () => {
                       id="notify"
                       checked={notify}
                       onCheckedChange={(checked) => setNotify(checked === true)}
-                      className="border-gray-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 mt-1"
+                      disabled={isLoading}
+                      className="border-gray-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 mt-1 disabled:opacity-50"
                     />
                     <Label htmlFor="notify" className="text-sm text-gray-300 leading-relaxed">
                       I want to be notified when CampusConnect launches and receive exclusive updates. <span className="text-emerald-400">*</span>
@@ -186,10 +205,17 @@ const Index = () => {
 
                   <Button
                     type="submit"
-                    disabled={isLoading}
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-8 py-3 h-12 rounded-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/25 w-full sm:w-auto"
+                    disabled={isLoading || !email || !firstName || !notify}
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-8 py-3 h-12 rounded-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/25 w-full sm:w-auto disabled:opacity-50 disabled:transform-none disabled:hover:shadow-none"
                   >
-                    {isLoading ? "Subscribing..." : "Notify Me"}
+                    {isLoading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Subscribing...</span>
+                      </div>
+                    ) : (
+                      "Notify Me"
+                    )}
                   </Button>
                 </div>
               </form>

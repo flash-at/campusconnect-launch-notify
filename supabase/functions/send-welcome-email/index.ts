@@ -46,8 +46,46 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("SendGrid API Key found, initializing...");
-    const { email, firstName }: EmailRequest = await req.json();
+    console.log("SendGrid API Key found, processing request...");
+    
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (parseError) {
+      console.error("Error parsing request JSON:", parseError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid request format" 
+        }),
+        {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json", 
+            ...corsHeaders 
+          },
+        }
+      );
+    }
+
+    const { email, firstName }: EmailRequest = requestData;
+    
+    if (!email || !firstName) {
+      console.error("Missing required fields:", { email: !!email, firstName: !!firstName });
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Missing required fields: email and firstName" 
+        }),
+        {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json", 
+            ...corsHeaders 
+          },
+        }
+      );
+    }
     
     console.log("Sending welcome email to:", email, "for:", firstName);
 

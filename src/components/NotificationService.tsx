@@ -19,6 +19,38 @@ export class NotificationService {
     try {
       console.log('Subscribing user to notifications:', data);
       
+      // First, check if user already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('email_subscribers')
+        .select('*')
+        .eq('email', data.email)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing user:', checkError);
+        return {
+          success: false,
+          message: 'Failed to check subscription status. Please try again.',
+          emailSent: false
+        };
+      }
+
+      if (existingUser) {
+        console.log('User already exists, sending welcome email anyway');
+        
+        // Try to send welcome email even if user exists
+        const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
+        
+        return {
+          success: true,
+          message: emailResult.success 
+            ? `${data.firstName}, you're already subscribed! We've sent you a welcome email.`
+            : `${data.firstName}, you're already on our waitlist! We'll notify you when CampusConnect launches.`,
+          emailSent: emailResult.success
+        };
+      }
+
+      // Insert new user
       const { data: result, error } = await supabase
         .from('email_subscribers')
         .insert([{
@@ -29,20 +61,15 @@ export class NotificationService {
         .select();
 
       if (error) {
-        console.error('Error subscribing user:', error);
-        if (error.code === '23505') {
-          return {
-            success: true,
-            message: `${data.firstName}, you're already on our waitlist! We'll notify you when CampusConnect launches.`,
-            emailSent: false
-          };
-        }
+        console.error('Error inserting user:', error);
         return {
           success: false,
           message: 'Failed to subscribe. Please try again.',
           emailSent: false
         };
       }
+      
+      console.log('User inserted successfully:', result);
       
       // Try to send welcome email
       const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
@@ -55,7 +82,7 @@ export class NotificationService {
         emailSent: emailResult.success
       };
     } catch (error) {
-      console.error('Error subscribing user:', error);
+      console.error('Error in subscribeUser:', error);
       return {
         success: false,
         message: 'Something went wrong. Please try again.',
@@ -67,17 +94,19 @@ export class NotificationService {
   // Send welcome email when user subscribes
   static async sendWelcomeEmail(email: string, firstName: string): Promise<{ success: boolean; message: string }> {
     try {
-      console.log('Calling send-welcome-email function...');
+      console.log('Calling send-welcome-email function for:', email);
       
       const { data, error } = await supabase.functions.invoke('send-welcome-email', {
         body: { email, firstName }
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
         console.error('Error calling welcome email function:', error);
         return {
           success: false,
-          message: 'Email service unavailable'
+          message: 'Email service error: ' + error.message
         };
       }
 
@@ -98,7 +127,7 @@ export class NotificationService {
       console.error('Error sending welcome email:', error);
       return {
         success: false,
-        message: 'Email service error'
+        message: 'Email service error: ' + (error as Error).message
       };
     }
   }
@@ -116,7 +145,7 @@ export class NotificationService {
         console.error('Error calling launch email function:', error);
         return {
           success: false,
-          message: 'Failed to send launch notifications'
+          message: 'Failed to send launch notifications: ' + error.message
         };
       }
 
@@ -137,7 +166,7 @@ export class NotificationService {
       console.error('Error sending launch notifications:', error);
       return {
         success: false,
-        message: 'Service error occurred'
+        message: 'Service error occurred: ' + (error as Error).message
       };
     }
   }
@@ -159,7 +188,7 @@ export class NotificationService {
         console.error('Error calling update email function:', error);
         return {
           success: false,
-          message: 'Failed to send update notifications'
+          message: 'Failed to send update notifications: ' + error.message
         };
       }
 
@@ -180,7 +209,7 @@ export class NotificationService {
       console.error('Error sending update notifications:', error);
       return {
         success: false,
-        message: 'Service error occurred'
+        message: 'Service error occurred: ' + (error as Error).message
       };
     }
   }
