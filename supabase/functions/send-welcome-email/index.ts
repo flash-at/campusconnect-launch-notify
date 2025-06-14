@@ -1,4 +1,5 @@
 
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
@@ -53,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending welcome email to:", email, "for:", firstName);
 
     const emailResponse = await resend.emails.send({
-      from: "CampusConnect <noreply@yourdomain.com>", // Replace with your verified domain
+      from: "CampusConnect <onboarding@resend.dev>",
       to: [email],
       subject: "🚀 Welcome to CampusConnect!",
       html: `
@@ -259,3 +260,4 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
+
