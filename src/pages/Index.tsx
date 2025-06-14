@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ const Index = () => {
     
     console.log("Form submitted with:", { email, firstName, notify });
     
+    // Validate all required fields
     if (!email || !firstName || !notify) {
       toast({
         title: "Missing Information",
@@ -41,12 +41,23 @@ const Index = () => {
       return;
     }
 
-    // Basic email validation
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate name (no numbers or special characters)
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(firstName.trim())) {
+      toast({
+        title: "Invalid Name",
+        description: "Please enter a valid first name (letters only).",
         variant: "destructive",
       });
       return;
@@ -74,6 +85,16 @@ const Index = () => {
         setEmail("");
         setFirstName("");
         setNotify(false);
+        
+        // Show additional success message if email was sent
+        if (result.emailSent) {
+          setTimeout(() => {
+            toast({
+              title: "Check Your Email! 📬",
+              description: "A welcome email has been sent to your inbox.",
+            });
+          }, 2000);
+        }
       } else {
         toast({
           title: "Subscription Error",

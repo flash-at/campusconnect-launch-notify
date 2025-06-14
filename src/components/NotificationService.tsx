@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface NotificationData {
@@ -24,9 +23,9 @@ export class NotificationService {
         .from('email_subscribers')
         .select('*')
         .eq('email', data.email)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
         console.error('Error checking existing user:', checkError);
         return {
           success: false,
@@ -35,16 +34,15 @@ export class NotificationService {
         };
       }
 
+      // Always try to send welcome email, regardless of existing user
+      const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
+      
       if (existingUser) {
-        console.log('User already exists, sending welcome email anyway');
-        
-        // Try to send welcome email even if user exists
-        const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
-        
+        console.log('User already exists, welcome email sent anyway');
         return {
           success: true,
           message: emailResult.success 
-            ? `${data.firstName}, you're already subscribed! We've sent you a welcome email.`
+            ? `${data.firstName}, you're already subscribed! We've sent you a fresh welcome email.`
             : `${data.firstName}, you're already on our waitlist! We'll notify you when CampusConnect launches.`,
           emailSent: emailResult.success
         };
@@ -71,14 +69,11 @@ export class NotificationService {
       
       console.log('User inserted successfully:', result);
       
-      // Try to send welcome email
-      const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
-      
       return {
         success: true,
         message: emailResult.success 
           ? `Thanks ${data.firstName}! Check your email for a welcome message.`
-          : `Thanks ${data.firstName}! You're subscribed, but we couldn't send the welcome email right now.`,
+          : `Thanks ${data.firstName}! You're subscribed. Welcome email will be sent shortly.`,
         emailSent: emailResult.success
       };
     } catch (error) {
@@ -97,7 +92,10 @@ export class NotificationService {
       console.log('Calling send-welcome-email function for:', email);
       
       const { data, error } = await supabase.functions.invoke('send-welcome-email', {
-        body: { email, firstName }
+        body: { 
+          email: email.trim(), 
+          firstName: firstName.trim() 
+        }
       });
 
       console.log('Function response:', { data, error });

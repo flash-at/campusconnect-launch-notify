@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Email service not configured - API key missing" 
+          error: "Email service not configured - API key missing. Please check your SendGrid configuration." 
         }),
         {
           status: 500,
@@ -75,7 +75,26 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Missing required fields: email and firstName" 
+          error: "Missing required fields: email and firstName are required" 
+        }),
+        {
+          status: 400,
+          headers: { 
+            "Content-Type": "application/json", 
+            ...corsHeaders 
+          },
+        }
+      );
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error("Invalid email format:", email);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid email format" 
         }),
         {
           status: 400,
@@ -93,10 +112,10 @@ const handler = async (req: Request): Promise<Response> => {
       personalizations: [
         {
           to: [{ email: email }],
-          subject: "🚀 Welcome to CampusConnect!"
+          subject: "🚀 Welcome to CampusConnect - You're In!"
         }
       ],
-      from: { email: "noreply@campusconnect.com", name: "CampusConnect" },
+      from: { email: "noreply@campusconnect.com", name: "CampusConnect Team" },
       content: [
         {
           type: "text/html",
@@ -147,18 +166,28 @@ const handler = async (req: Request): Promise<Response> => {
                     h1 { margin: 0; font-size: 28px; font-weight: bold; }
                     h2 { color: #10B981; margin-top: 0; }
                     h4 { color: #333; margin-bottom: 8px; }
+                    .cta-button { 
+                        background: #10B981; 
+                        color: white; 
+                        padding: 12px 24px; 
+                        text-decoration: none; 
+                        border-radius: 6px; 
+                        display: inline-block; 
+                        margin: 20px 0; 
+                        font-weight: bold;
+                    }
                 </style>
             </head>
             <body>
                 <div class="header">
                     <h1>🚀 Welcome to CampusConnect!</h1>
-                    <p style="margin: 0; font-size: 18px; opacity: 0.9;">Get ready for something amazing</p>
+                    <p style="margin: 0; font-size: 18px; opacity: 0.9;">You're officially on the waitlist!</p>
                 </div>
                 
                 <div class="content">
                     <h2>Hi ${firstName}! 👋</h2>
                     
-                    <p>Thank you for signing up to be notified about CampusConnect! We're thrilled to have you on board as one of our early supporters.</p>
+                    <p><strong>Congratulations!</strong> You've successfully joined the CampusConnect waitlist. We're thrilled to have you as one of our early supporters!</p>
                     
                     <p><strong>What is CampusConnect?</strong></p>
                     <p>CampusConnect is the ultimate platform designed to revolutionize campus life. We're building something special that will help students:</p>
@@ -189,16 +218,19 @@ const handler = async (req: Request): Promise<Response> => {
                     </div>
                     
                     <p><strong>What's Next?</strong></p>
-                    <p>We're putting the finishing touches on CampusConnect and will notify you the moment it's ready to launch! You'll be among the first to experience the future of campus connectivity.</p>
+                    <p>We're putting the finishing touches on CampusConnect and will notify you the <em>moment</em> it's ready to launch! You'll be among the first to experience the future of campus connectivity.</p>
+                    
+                    <p>Keep an eye on your inbox - we'll send you exclusive updates and be the first to know when we go live!</p>
                     
                     <p>Thank you for believing in our vision. We can't wait to show you what we've been building!</p>
                     
-                    <p>Stay tuned,<br><strong>The CampusConnect Team</strong></p>
+                    <p>Stay tuned,<br><strong>The CampusConnect Team 🎓</strong></p>
                 </div>
                 
                 <div class="footer">
                     <p>© 2025 CampusConnect by Mahesh</p>
-                    <p>You're receiving this because you signed up for launch notifications.</p>
+                    <p>You're receiving this because you signed up for launch notifications at CampusConnect.</p>
+                    <p>We promise to only send you important updates - no spam!</p>
                 </div>
             </body>
             </html>
@@ -241,7 +273,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Email sending failed: ${response.status} - ${errorText}`,
+        error: `Failed to send email: ${response.status} - Please check your SendGrid configuration`,
       }), {
         status: 500,
         headers: {
@@ -264,14 +296,14 @@ const handler = async (req: Request): Promise<Response> => {
       .insert([{
         type: 'welcome',
         title: 'Welcome to CampusConnect!',
-        content: `Welcome email sent to ${firstName}`,
+        content: `Welcome email sent to ${firstName} at ${email}`,
         recipient_email: email,
         success: true
       }]);
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Welcome email sent successfully"
+      message: "Welcome email sent successfully! Check your inbox."
     }), {
       status: 200,
       headers: {
@@ -285,7 +317,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: `Service error: ${error.message}. Please try again.`,
         stack: error.stack
       }),
       {
