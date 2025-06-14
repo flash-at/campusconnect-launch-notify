@@ -1,5 +1,4 @@
 
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
@@ -36,7 +35,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Email service not configured" 
+          error: "Email service not configured - API key missing" 
         }),
         {
           status: 500,
@@ -48,13 +47,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log("Resend API Key found, initializing...");
     const resend = new Resend(resendApiKey);
     const { email, firstName }: EmailRequest = await req.json();
     
     console.log("Sending welcome email to:", email, "for:", firstName);
 
+    // Use your verified domain - replace with your actual domain
+    const fromEmail = "noreply@yourdomain.com"; // Replace with your verified domain
+    console.log("Sending from:", fromEmail);
+
     const emailResponse = await resend.emails.send({
-      from: "CampusConnect <onboarding@resend.dev>",
+      from: `CampusConnect <${fromEmail}>`,
       to: [email],
       subject: "🚀 Welcome to CampusConnect!",
       html: `
@@ -80,9 +84,6 @@ const handler = async (req: Request): Promise<Response> => {
                     padding: 40px 30px; 
                     border-radius: 12px 12px 0 0; 
                     text-align: center; 
-                }
-                .logo {
-                    margin-bottom: 20px;
                 }
                 .content { 
                     background: white; 
@@ -111,13 +112,6 @@ const handler = async (req: Request): Promise<Response> => {
         </head>
         <body>
             <div class="header">
-                <div class="logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 11V3h6v8h-6z"></path>
-                        <path d="M9 3v18h6V3H9z"></path>
-                        <path d="M1 7v10h6V7H1z"></path>
-                    </svg>
-                </div>
                 <h1>🚀 Welcome to CampusConnect!</h1>
                 <p style="margin: 0; font-size: 18px; opacity: 0.9;">Get ready for something amazing</p>
             </div>
@@ -172,44 +166,38 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email response:", emailResponse);
+    console.log("Email API response:", JSON.stringify(emailResponse, null, 2));
 
-    // Check if email sending failed due to domain verification
+    // Check if email sending failed
     if (emailResponse.error) {
       console.error("Email sending failed:", emailResponse.error);
       
-      // Check if it's a domain verification issue
-      if (emailResponse.error.message?.includes("verify a domain")) {
-        // Still save the subscriber but note email couldn't be sent
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
+      // Initialize Supabase client for logging
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
 
-        await supabase
-          .from('notifications_sent')
-          .insert([{
-            type: 'welcome',
-            title: 'Welcome to CampusConnect!',
-            content: `Email sending failed - domain verification required: ${emailResponse.error.message}`,
-            recipient_email: email,
-            success: false
-          }]);
+      await supabase
+        .from('notifications_sent')
+        .insert([{
+          type: 'welcome',
+          title: 'Welcome to CampusConnect!',
+          content: `Email sending failed: ${JSON.stringify(emailResponse.error)}`,
+          recipient_email: email,
+          success: false
+        }]);
 
-        return new Response(JSON.stringify({ 
-          success: false, 
-          error: "Email service requires domain verification. Please contact support.",
-          details: "Your subscription was saved but welcome email couldn't be sent."
-        }), {
-          status: 200, // Still return 200 since subscription was saved
-          headers: {
-            "Content-Type": "application/json",
-            ...corsHeaders,
-          },
-        });
-      }
-      
-      // Other email errors
-      throw new Error(emailResponse.error.message || "Failed to send email");
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Email sending failed: ${emailResponse.error.message || 'Unknown error'}`,
+        details: emailResponse.error
+      }), {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
     }
 
     console.log("Email sent successfully:", emailResponse);
@@ -232,7 +220,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Welcome email sent successfully" 
+      message: "Welcome email sent successfully",
+      emailId: emailResponse.data?.id
     }), {
       status: 200,
       headers: {
@@ -246,7 +235,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        stack: error.stack
       }),
       {
         status: 500,
@@ -260,4 +250,3 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
-

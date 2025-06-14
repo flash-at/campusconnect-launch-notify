@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +56,7 @@ const Index = () => {
         setNotify(false);
       } else {
         toast({
-          title: "Error",
+          title: "Subscription Error",
           description: result.message,
           variant: "destructive",
         });
@@ -65,8 +64,8 @@ const Index = () => {
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
+        title: "Network Error",
+        description: "Please check your internet connection and try again.",
         variant: "destructive",
       });
     } finally {
@@ -102,12 +101,12 @@ const Index = () => {
       </header>
 
       {/* Email Service Notice */}
-      <div className="bg-amber-500/10 border-l-4 border-amber-500 p-4 mx-6 mt-4 rounded-r-lg">
+      <div className="bg-blue-500/10 border-l-4 border-blue-500 p-4 mx-6 mt-4 rounded-r-lg">
         <div className="flex items-center">
-          <AlertCircle className="h-5 w-5 text-amber-400 mr-3" />
+          <AlertCircle className="h-5 w-5 text-blue-400 mr-3" />
           <div>
-            <p className="text-sm text-amber-200">
-              <strong>Note:</strong> Email notifications are currently being set up. You'll still be added to our waitlist!
+            <p className="text-sm text-blue-200">
+              <strong>Email Status:</strong> You'll be added to our waitlist! Email notifications are being configured.
             </p>
           </div>
         </div>
@@ -190,7 +189,7 @@ const Index = () => {
                     disabled={isLoading}
                     className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold px-8 py-3 h-12 rounded-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/25 w-full sm:w-auto"
                   >
-                    {isLoading ? "Sending..." : "Notify Me"}
+                    {isLoading ? "Subscribing..." : "Notify Me"}
                   </Button>
                 </div>
               </form>
