@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { Resend } from "npm:resend@2.0.0";
@@ -170,6 +169,46 @@ const handler = async (req: Request): Promise<Response> => {
         </html>
       `,
     });
+
+    console.log("Email response:", emailResponse);
+
+    // Check if email sending failed due to domain verification
+    if (emailResponse.error) {
+      console.error("Email sending failed:", emailResponse.error);
+      
+      // Check if it's a domain verification issue
+      if (emailResponse.error.message?.includes("verify a domain")) {
+        // Still save the subscriber but note email couldn't be sent
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        await supabase
+          .from('notifications_sent')
+          .insert([{
+            type: 'welcome',
+            title: 'Welcome to CampusConnect!',
+            content: `Email sending failed - domain verification required: ${emailResponse.error.message}`,
+            recipient_email: email,
+            success: false
+          }]);
+
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Email service requires domain verification. Please contact support.",
+          details: "Your subscription was saved but welcome email couldn't be sent."
+        }), {
+          status: 200, // Still return 200 since subscription was saved
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        });
+      }
+      
+      // Other email errors
+      throw new Error(emailResponse.error.message || "Failed to send email");
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
