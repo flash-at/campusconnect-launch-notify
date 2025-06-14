@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { NotificationService, NotificationData } from './NotificationService';
-import { Send, Users, Bell, Rocket, BarChart3 } from "lucide-react";
+import { Send, Users, Bell, Rocket, BarChart3, LogOut } from "lucide-react";
+import AdminLogin from './AdminLogin';
 
 const AdminPanel = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [updateTitle, setUpdateTitle] = useState("");
   const [updateContent, setUpdateContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -19,8 +20,27 @@ const AdminPanel = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    toast({
+      title: "Logged Out",
+      description: "You have been logged out of the admin panel.",
+    });
+  };
+
+  // If not authenticated, show login screen
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={handleLogin} />;
+  }
 
   const loadData = async () => {
     try {
@@ -107,7 +127,17 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-900 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">CampusConnect Admin Panel</h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-4xl font-bold text-white">CampusConnect Admin Panel</h1>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
           <p className="text-gray-300">Manage notifications and updates for your subscribers</p>
           
           {/* Stats Cards */}
