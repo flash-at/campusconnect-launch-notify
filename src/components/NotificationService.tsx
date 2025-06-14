@@ -34,11 +34,38 @@ export class NotificationService {
         };
       }
 
-      // Always try to send welcome email, regardless of existing user
-      const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
+      let userInserted = false;
       
-      if (existingUser) {
-        console.log('User already exists, welcome email sent anyway');
+      if (!existingUser) {
+        // Insert new user
+        const { data: result, error } = await supabase
+          .from('email_subscribers')
+          .insert([{
+            email: data.email,
+            first_name: data.firstName,
+            is_active: true
+          }])
+          .select();
+
+        if (error) {
+          console.error('Error inserting user:', error);
+          return {
+            success: false,
+            message: 'Failed to subscribe. Please try again.',
+            emailSent: false
+          };
+        }
+        
+        console.log('User inserted successfully:', result);
+        userInserted = true;
+      }
+
+      // Always try to send welcome email
+      console.log('Attempting to send welcome email...');
+      const emailResult = await this.sendWelcomeEmail(data.email, data.firstName);
+      console.log('Email send result:', emailResult);
+      
+      if (existingUser && !userInserted) {
         return {
           success: true,
           message: emailResult.success 
@@ -48,27 +75,6 @@ export class NotificationService {
         };
       }
 
-      // Insert new user
-      const { data: result, error } = await supabase
-        .from('email_subscribers')
-        .insert([{
-          email: data.email,
-          first_name: data.firstName,
-          is_active: true
-        }])
-        .select();
-
-      if (error) {
-        console.error('Error inserting user:', error);
-        return {
-          success: false,
-          message: 'Failed to subscribe. Please try again.',
-          emailSent: false
-        };
-      }
-      
-      console.log('User inserted successfully:', result);
-      
       return {
         success: true,
         message: emailResult.success 

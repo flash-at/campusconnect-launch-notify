@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
           subject: "🚀 Welcome to CampusConnect - You're In!"
         }
       ],
-      from: { email: "noreply@campusconnect.com", name: "CampusConnect Team" },
+      from: { email: "noreply@lovableai.com", name: "CampusConnect Team" },
       content: [
         {
           type: "text/html",
