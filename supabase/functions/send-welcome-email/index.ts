@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Email service not configured - API key missing. Please check your Brevo configuration." 
+          error: "Email service not configured" 
         }),
         {
           status: 500,
@@ -159,16 +159,6 @@ const handler = async (req: Request): Promise<Response> => {
                 h1 { margin: 0; font-size: 28px; font-weight: bold; }
                 h2 { color: #10B981; margin-top: 0; }
                 h4 { color: #333; margin-bottom: 8px; }
-                .cta-button { 
-                    background: #10B981; 
-                    color: white; 
-                    padding: 12px 24px; 
-                    text-decoration: none; 
-                    border-radius: 6px; 
-                    display: inline-block; 
-                    margin: 20px 0; 
-                    font-weight: bold;
-                }
             </style>
         </head>
         <body>
@@ -264,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Failed to send email: ${response.status} - Please check your Brevo configuration`,
+        error: `Failed to send email: ${response.status} - ${errorText}`,
       }), {
         status: 500,
         headers: {
@@ -308,8 +298,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: `Service error: ${error.message}. Please try again.`,
-        stack: error.stack
+        error: `Service error: ${error.message}. Please try again.`
       }),
       {
         status: 500,
