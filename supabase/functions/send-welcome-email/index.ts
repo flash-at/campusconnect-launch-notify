@@ -28,13 +28,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     // Get the API key from environment
-    const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
-    if (!sendgridApiKey) {
-      console.error("SENDGRID_API_KEY environment variable is not set");
+    const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+    if (!brevoApiKey) {
+      console.error("BREVO_API_KEY environment variable is not set");
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: "Email service not configured - API key missing. Please check your SendGrid configuration." 
+          error: "Email service not configured - API key missing. Please check your Brevo configuration." 
         }),
         {
           status: 500,
@@ -46,7 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("SendGrid API Key found, processing request...");
+    console.log("Brevo API Key found, processing request...");
     
     let requestData;
     try {
@@ -109,152 +109,143 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending welcome email to:", email, "for:", firstName);
 
     const emailData = {
-      personalizations: [
-        {
-          to: [{ email: email }],
-          subject: "🚀 Welcome to CampusConnect - You're In!"
-        }
-      ],
-      from: { email: "noreply@lovableai.com", name: "CampusConnect Team" },
-      content: [
-        {
-          type: "text/html",
-          value: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Welcome to CampusConnect</title>
-                <style>
-                    body { 
-                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                        line-height: 1.6; 
-                        color: #333; 
-                        max-width: 600px; 
-                        margin: 0 auto; 
-                        padding: 20px; 
-                        background-color: #f8f9fa;
-                    }
-                    .header { 
-                        background: linear-gradient(135deg, #0F172A 0%, #10B981 100%); 
-                        color: white; 
-                        padding: 40px 30px; 
-                        border-radius: 12px 12px 0 0; 
-                        text-align: center; 
-                    }
-                    .content { 
-                        background: white; 
-                        padding: 40px 30px; 
-                        border-radius: 0 0 12px 12px; 
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    }
-                    .feature-box { 
-                        background: #f0fdf4; 
-                        padding: 20px; 
-                        margin: 20px 0; 
-                        border-radius: 8px; 
-                        border-left: 4px solid #10B981; 
-                    }
-                    .footer { 
-                        text-align: center; 
-                        margin-top: 30px; 
-                        padding: 20px; 
-                        color: #666; 
-                        font-size: 14px; 
-                    }
-                    h1 { margin: 0; font-size: 28px; font-weight: bold; }
-                    h2 { color: #10B981; margin-top: 0; }
-                    h4 { color: #333; margin-bottom: 8px; }
-                    .cta-button { 
-                        background: #10B981; 
-                        color: white; 
-                        padding: 12px 24px; 
-                        text-decoration: none; 
-                        border-radius: 6px; 
-                        display: inline-block; 
-                        margin: 20px 0; 
-                        font-weight: bold;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h1>🚀 Welcome to CampusConnect!</h1>
-                    <p style="margin: 0; font-size: 18px; opacity: 0.9;">You're officially on the waitlist!</p>
+      to: [{ email: email, name: firstName }],
+      sender: { email: "noreply@lovableai.com", name: "CampusConnect Team" },
+      subject: "🚀 Welcome to CampusConnect - You're In!",
+      htmlContent: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Welcome to CampusConnect</title>
+            <style>
+                body { 
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                    line-height: 1.6; 
+                    color: #333; 
+                    max-width: 600px; 
+                    margin: 0 auto; 
+                    padding: 20px; 
+                    background-color: #f8f9fa;
+                }
+                .header { 
+                    background: linear-gradient(135deg, #0F172A 0%, #10B981 100%); 
+                    color: white; 
+                    padding: 40px 30px; 
+                    border-radius: 12px 12px 0 0; 
+                    text-align: center; 
+                }
+                .content { 
+                    background: white; 
+                    padding: 40px 30px; 
+                    border-radius: 0 0 12px 12px; 
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                }
+                .feature-box { 
+                    background: #f0fdf4; 
+                    padding: 20px; 
+                    margin: 20px 0; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #10B981; 
+                }
+                .footer { 
+                    text-align: center; 
+                    margin-top: 30px; 
+                    padding: 20px; 
+                    color: #666; 
+                    font-size: 14px; 
+                }
+                h1 { margin: 0; font-size: 28px; font-weight: bold; }
+                h2 { color: #10B981; margin-top: 0; }
+                h4 { color: #333; margin-bottom: 8px; }
+                .cta-button { 
+                    background: #10B981; 
+                    color: white; 
+                    padding: 12px 24px; 
+                    text-decoration: none; 
+                    border-radius: 6px; 
+                    display: inline-block; 
+                    margin: 20px 0; 
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🚀 Welcome to CampusConnect!</h1>
+                <p style="margin: 0; font-size: 18px; opacity: 0.9;">You're officially on the waitlist!</p>
+            </div>
+            
+            <div class="content">
+                <h2>Hi ${firstName}! 👋</h2>
+                
+                <p><strong>Congratulations!</strong> You've successfully joined the CampusConnect waitlist. We're thrilled to have you as one of our early supporters!</p>
+                
+                <p><strong>What is CampusConnect?</strong></p>
+                <p>CampusConnect is the ultimate platform designed to revolutionize campus life. We're building something special that will help students:</p>
+                
+                <div class="feature-box">
+                    <h4>📅 Stay Updated on Campus Events</h4>
+                    <p>Never miss important events, workshops, and activities happening on campus.</p>
                 </div>
                 
-                <div class="content">
-                    <h2>Hi ${firstName}! 👋</h2>
-                    
-                    <p><strong>Congratulations!</strong> You've successfully joined the CampusConnect waitlist. We're thrilled to have you as one of our early supporters!</p>
-                    
-                    <p><strong>What is CampusConnect?</strong></p>
-                    <p>CampusConnect is the ultimate platform designed to revolutionize campus life. We're building something special that will help students:</p>
-                    
-                    <div class="feature-box">
-                        <h4>📅 Stay Updated on Campus Events</h4>
-                        <p>Never miss important events, workshops, and activities happening on campus.</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                        <h4>🎭 Discover and Join Club Activities</h4>
-                        <p>Find clubs that match your interests and connect with like-minded students.</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                        <h4>🛠️ Submit and Track Service Requests</h4>
-                        <p>Easily request maintenance, tech support, and other campus services.</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                        <h4>📚 Access Essential Student Tools</h4>
-                        <p>Get access to tools and resources that will enhance your academic success.</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                        <h4>🤝 Connect with Fellow Students</h4>
-                        <p>Build meaningful connections and expand your campus network.</p>
-                    </div>
-                    
-                    <p><strong>What's Next?</strong></p>
-                    <p>We're putting the finishing touches on CampusConnect and will notify you the <em>moment</em> it's ready to launch! You'll be among the first to experience the future of campus connectivity.</p>
-                    
-                    <p>Keep an eye on your inbox - we'll send you exclusive updates and be the first to know when we go live!</p>
-                    
-                    <p>Thank you for believing in our vision. We can't wait to show you what we've been building!</p>
-                    
-                    <p>Stay tuned,<br><strong>The CampusConnect Team 🎓</strong></p>
+                <div class="feature-box">
+                    <h4>🎭 Discover and Join Club Activities</h4>
+                    <p>Find clubs that match your interests and connect with like-minded students.</p>
                 </div>
                 
-                <div class="footer">
-                    <p>© 2025 CampusConnect by Mahesh</p>
-                    <p>You're receiving this because you signed up for launch notifications at CampusConnect.</p>
-                    <p>We promise to only send you important updates - no spam!</p>
+                <div class="feature-box">
+                    <h4>🛠️ Submit and Track Service Requests</h4>
+                    <p>Easily request maintenance, tech support, and other campus services.</p>
                 </div>
-            </body>
-            </html>
-          `
-        }
-      ]
+                
+                <div class="feature-box">
+                    <h4>📚 Access Essential Student Tools</h4>
+                    <p>Get access to tools and resources that will enhance your academic success.</p>
+                </div>
+                
+                <div class="feature-box">
+                    <h4>🤝 Connect with Fellow Students</h4>
+                    <p>Build meaningful connections and expand your campus network.</p>
+                </div>
+                
+                <p><strong>What's Next?</strong></p>
+                <p>We're putting the finishing touches on CampusConnect and will notify you the <em>moment</em> it's ready to launch! You'll be among the first to experience the future of campus connectivity.</p>
+                
+                <p>Keep an eye on your inbox - we'll send you exclusive updates and be the first to know when we go live!</p>
+                
+                <p>Thank you for believing in our vision. We can't wait to show you what we've been building!</p>
+                
+                <p>Stay tuned,<br><strong>The CampusConnect Team 🎓</strong></p>
+            </div>
+            
+            <div class="footer">
+                <p>© 2025 CampusConnect by Mahesh</p>
+                <p>You're receiving this because you signed up for launch notifications at CampusConnect.</p>
+                <p>We promise to only send you important updates - no spam!</p>
+            </div>
+        </body>
+        </html>
+      `
     };
 
-    console.log("Sending email via SendGrid...");
+    console.log("Sending email via Brevo...");
 
-    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${sendgridApiKey}`,
+        "api-key": brevoApiKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(emailData),
     });
 
-    console.log("SendGrid response status:", response.status);
+    console.log("Brevo response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("SendGrid API error:", errorText);
+      console.error("Brevo API error:", errorText);
       
       // Initialize Supabase client for logging
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -273,7 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       return new Response(JSON.stringify({ 
         success: false, 
-        error: `Failed to send email: ${response.status} - Please check your SendGrid configuration`,
+        error: `Failed to send email: ${response.status} - Please check your Brevo configuration`,
       }), {
         status: 500,
         headers: {
@@ -283,7 +274,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log("Email sent successfully via SendGrid");
+    console.log("Email sent successfully via Brevo");
 
     // Initialize Supabase client for logging
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
